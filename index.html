@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometry Dash - Technical Edition</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<style>
+    #authSection {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+    }
+    
+    #userInfo {
+        display: none;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px;
+        border-radius: 10px;
+        margin-top: 10px;
+        text-align: center;
+    }
+    
+    .logout-btn {
+        background: #ff4757;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 8px;
+    }
+</style>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div id="score">Очки: 0</div>
+            <div id="highScore">Рекорд: 0</div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="menu">
+            <div id="startScreen">
+                <h1>🎮 Geometry Dash</h1>
+                <p>Техникум Edition</p>
+                <button id="startBtn">Начать игру</button>
+                <div id="controls">
+                    <p>💡 Кликай для прыжка!</p>
+                </div>
+            </div>
+            
+            <div id="gameOverScreen" class="hidden">
+                <h2>Игра окончена!</h2>
+                <p id="finalScore">Очки: 0</p>
+                <button id="restartBtn">Играть снова</button>
+                <button id="shareBtn">Поделиться результатом</button>
+            </div>
+        </div>
+    </div>
+    <div id="authSection" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+        <script async 
+                            src="https://telegram.org/js/telegram-widget.js?22" 
+                            data-telegram-login="echo19_lnt_bot" 
+                            data-size="large" 
+                            data-auth-url="https://shuma4er.github.io/geometry-dash/auth.html"     
+                            data-request-access="write"></script>
+    </div>
+
+    <script src="game.js"></script>
+    
+    <script type="text/javascript">
+        function onTelegramAuth(user) {
+            // Сохраняем данные пользователя
+            localStorage.setItem('tg_user', JSON.stringify(user));
+            
+            // Показываем уведомление
+            alert('Добро пожаловать, ' + user.first_name + '! 🎮\nТвой ID: ' + user.id);
+            
+            // Можно отправить данные в бота
+            try {
+                Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'telegram_login',
+                    user: user
+                }));
+            } catch (e) {
+                console.log('WebApp not available:', e);
+            }
+            
+            // Скрываем кнопку авторизации после входа
+            document.getElementById('authSection').style.display = 'none';
+        }
+        
+        // Проверяем, авторизован ли пользователь при загрузке
+        window.addEventListener('load', function() {
+            const savedUser = localStorage.getItem('tg_user');
+            if (savedUser) {
+                document.getElementById('authSection').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
