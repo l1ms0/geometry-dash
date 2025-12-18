@@ -5,12 +5,11 @@
 }
 
 body {
-    font-family: 'Roboto Mono', monospace;
-    background-color: #0f0f1b;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     overflow: hidden;
     touch-action: manipulation;
     user-select: none;
-    color: #e0e0ff;
 }
 
 #gameContainer {
@@ -33,26 +32,26 @@ body {
     top: 20px;
     left: 20px;
     z-index: 100;
-    font-size: 18px;
-    background: rgba(15, 15, 27, 0.7);
-    padding: 12px 18px;
-    border-radius: 8px;
-    border: 1px solid #444488;
-    box-shadow: 0 0 10px rgba(64, 64, 255, 0.3);
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.3);
+    padding: 15px 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,255,255,0.2);
 }
 
 #score {
-    color: #00f0ff;
-    font-weight: bold;
-    font-size: 22px;
-    margin-bottom: 6px;
-    text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+    color: #FFD700;
+    font-size: 24px;
+    margin-bottom: 8px;
 }
 
 #highScore {
-    color: #ff40ff;
-    font-size: 16px;
-    text-shadow: 0 0 8px rgba(255, 64, 255, 0.5);
+    color: #4ECDC4;
+    font-size: 18px;
 }
 
 #menu {
@@ -64,7 +63,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(10, 10, 20, 0.95);
+    background: rgba(0, 0, 0, 0.85);
     z-index: 200;
     transition: opacity 0.3s ease;
 }
@@ -84,13 +83,22 @@ body {
 
 #startScreen, #gameOverScreen {
     text-align: center;
-    color: #e0e0ff;
+    color: white;
     padding: 40px;
-    background: rgba(20, 20, 35, 0.92);
-    border-radius: 16px;
-    border: 1px solid #5555aa;
-    box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
+    background: linear-gradient(135deg, 
+        rgba(255, 107, 107, 0.9) 0%, 
+        rgba(255, 159, 107, 0.9) 50%, 
+        rgba(107, 131, 255, 0.9) 100%);
+    border-radius: 25px;
+    backdrop-filter: blur(10px);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     max-width: 90%;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .hidden {
@@ -98,206 +106,450 @@ body {
 }
 
 button {
-    background: rgba(0, 30, 60, 0.8);
-    border: 1px solid #00f0ff;
-    color: #00f0ff;
-    padding: 16px 32px;
+    background: linear-gradient(45deg, #FF6B6B, #FFD166, #4ECDC4);
+    border: none;
+    padding: 18px 35px;
     margin: 12px;
-    border-radius: 6px;
-    font-size: 18px;
+    border-radius: 50px;
+    color: white;
+    font-size: 20px;
     font-weight: bold;
-    font-family: 'Roboto Mono', monospace;
     cursor: pointer;
-    transition: all 0.25s ease;
-    box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
-    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6);
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: 0.5s;
+}
+
+button:hover::before {
+    left: 100%;
 }
 
 button:hover {
-    background: rgba(0, 60, 120, 0.9);
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.8);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(255, 107, 107, 0.8);
 }
 
 button:active {
-    transform: translateY(0) scale(0.96);
-    box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+    transform: translateY(0) scale(0.95);
 }
 
 h1 {
-    font-size: 2.8em;
+    font-size: 3.5em;
     margin-bottom: 20px;
-    color: #00f0ff;
-    text-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
-    letter-spacing: 2px;
+    background: linear-gradient(45deg, #FFEB3B, #FF4081, #3D5AFE);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+@keyframes glow {
+    from { text-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    to { text-shadow: 0 5px 25px rgba(255,107,107,0.5); }
 }
 
 h2 {
-    font-size: 2em;
-    margin-bottom: 20px;
-    color: #ff40ff;
-    text-shadow: 0 0 10px rgba(255, 64, 255, 0.6);
+    font-size: 2.5em;
+    margin-bottom: 25px;
+    color: #FF6B6B;
+    text-shadow: 0 3px 10px rgba(0,0,0,0.3);
 }
 
 #finalScore {
-    font-size: 1.8em;
-    color: #00ff88;
+    font-size: 2em;
+    color: #FFD700;
     margin: 20px 0;
-    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    text-shadow: 0 3px 10px rgba(0,0,0,0.3);
 }
 
 #controls {
-    margin-top: 20px;
-    font-size: 14px;
-    opacity: 0.8;
-    color: #a0a0ff;
+    margin-top: 25px;
+    font-size: 16px;
+    opacity: 0.9;
+    color: #E0F7FA;
 }
 
 #authSection {
     margin-top: 20px;
-    padding: 14px;
-    background: rgba(30, 30, 50, 0.6);
-    border-radius: 10px;
-    border: 1px solid #333366;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
 }
 
-/* Анимации */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+    #ui {
+        font-size: 16px;
+        padding: 12px 16px;
+        top: 15px;
+        left: 15px;
+    }
+    
+    #score {
+        font-size: 20px;
+    }
+    
+    #highScore {
+        font-size: 16px;
+    }
+    
+    button {
+        padding: 16px 30px;
+        font-size: 18px;
+        margin: 10px;
+    }
+    
+    h1 {
+        font-size: 2.5em;
+    }
+    
+    h2 {
+        font-size: 2em;
+    }
+    
+    #startScreen, #gameOverScreen {
+        padding: 30px 25px;
+    }
 }
 
 @keyframes pulse {
     0% { transform: scale(1); }
-    50% { transform: scale(1.03); }
+    50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
 
 .pulse {
-    animation: pulse 1.8s infinite;
+    animation: pulse 2s infinite;
 }
 
-/* Элементы лица (монохром + неон) */
+@keyframes emergencyPulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes tapEffect {
+    0% {
+        transform: scale(0.5);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+@keyframes mouthTalk {
+    0%, 100% { height: 4px; }
+    50% { height: 8px; }
+}
+
+@keyframes mouthSmile {
+    0% { width: 20px; }
+    100% { width: 25px; }
+}
+
+@keyframes mouthSurprise {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+@media (max-height: 600px) {
+    #guaranteedJumpBtn {
+        width: 120px !important;
+        height: 120px !important;
+        bottom: 30px !important;
+        font-size: 20px !important;
+    }
+}
+
+@keyframes mouthTalk {
+
+    0%,
+    100% {
+        height: 4px;
+    }
+
+    50% {
+        height: 8px;
+    }
+}
+
+@keyframes mouthSmile {
+    0% {
+        width: 20px;
+    }
+
+    100% {
+        width: 25px;
+    }
+}
+
+@keyframes mouthSurprise {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+/* Стили для рта игрока */
 .player-mouth {
     position: absolute;
-    background: #ffffff;
+    background: #000000;
     border-radius: 50%;
     transition: all 0.2s ease;
 }
 
 .mouth-normal {
-    width: 18px;
-    height: 3px;
-    background: #e0e0ff;
+    width: 20px;
+    height: 4px;
+    background: #000000;
     border-radius: 10px 10px 2px 2px;
 }
 
 .mouth-smiling {
-    width: 22px;
-    height: 6px;
-    background: #00ff88;
+    width: 25px;
+    height: 8px;
+    background: #000000;
     border-radius: 10px 10px 15px 15px;
-    box-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+    animation: mouthSmile 0.3s ease;
 }
 
 .mouth-surprised {
-    width: 14px;
-    height: 14px;
-    background: #ff40ff;
+    width: 15px;
+    height: 15px;
+    background: #000000;
     border-radius: 50%;
-    box-shadow: 0 0 8px rgba(255, 64, 255, 0.6);
+    animation: mouthSurprise 0.5s ease;
 }
 
 .mouth-sad {
-    width: 20px;
-    height: 4px;
-    background: #ff4088;
+    width: 22px;
+    height: 5px;
+    background: #000000;
     border-radius: 2px 2px 10px 10px;
     transform: rotate(180deg);
-    box-shadow: 0 0 6px rgba(255, 64, 136, 0.5);
 }
 
 .mouth-talking {
     animation: mouthTalk 0.2s infinite alternate;
 }
 
-@keyframes mouthTalk {
-    0%, 100% { height: 3px; }
-    50% { height: 6px; }
-}
-
+/* Анимация языка */
 @keyframes tongueMove {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(2px) scale(1.1); }
+
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(2px) scale(1.1);
+    }
 }
 
 .player-tongue {
     position: absolute;
-    background: #ff4088;
+    background: #FF6B6B;
     border-radius: 50%;
     animation: tongueMove 0.3s infinite alternate;
-    box-shadow: 0 0 4px rgba(255, 64, 136, 0.5);
 }
 
+/* Эффект для счастливого лица при комбо */
+@keyframes happyFace {
+    0% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    50% {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.happy-face {
+    animation: happyFace 0.5s ease;
+}
+
+/* Эффект для грустного лица при поражении */
+@keyframes sadFace {
+    0% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    50% {
+        transform: scale(0.9) rotate(-5deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.sad-face {
+    animation: sadFace 0.8s ease;
+}
+
+/* Анимация мигания глаз */
 @keyframes blink {
-    0%, 90%, 100% { height: 8px; }
-    95% { height: 1px; }
+
+    0%,
+    90%,
+    100% {
+        height: 8px;
+    }
+
+    95% {
+        height: 2px;
+    }
 }
 
 .player-eye {
     position: absolute;
-    background: #e0e0ff;
+    background: #000000;
     border-radius: 50%;
-    animation: blink 4s infinite;
+    animation: blink 3s infinite;
 }
 
-/* Адаптация под мобильные */
+/* Улучшенные анимации рта */
+@keyframes mouthBreathing {
+
+    0%,
+    100% {
+        transform: scaleY(1);
+        height: 4px;
+    }
+
+    50% {
+        transform: scaleY(0.8);
+        height: 3px;
+    }
+}
+
+.mouth-breathing {
+    animation: mouthBreathing 2s infinite ease-in-out;
+}
+
+@keyframes mouthExcitement {
+    0% {
+        transform: scale(1);
+        width: 20px;
+    }
+
+    50% {
+        transform: scale(1.1);
+        width: 22px;
+    }
+
+    100% {
+        transform: scale(1);
+        width: 20px;
+    }
+}
+
+.mouth-excited {
+    animation: mouthExcitement 0.4s ease;
+}
 @media (max-width: 768px) {
-    #ui {
-        font-size: 14px;
-        padding: 10px 14px;
-        top: 15px;
-        left: 15px;
+
+    /* Адаптация анимаций рта для мобильных */
+    .player-mouth {
+        transform-origin: center center;
     }
 
-    #score { font-size: 20px; }
-    #highScore { font-size: 14px; }
-
-    button {
-        padding: 14px 26px;
-        font-size: 16px;
-        margin: 10px;
+    .mouth-smiling {
+        width: 20px;
+        height: 6px;
     }
 
-    h1 { font-size: 2.2em; }
-    h2 { font-size: 1.7em; }
-    #startScreen, #gameOverScreen { padding: 25px; }
+    .mouth-surprised {
+        width: 12px;
+        height: 12px;
+    }
+
+    /* Уменьшаем скорость некоторых анимаций на мобильных */
+    .mouth-talking {
+        animation: mouthTalk 0.3s infinite alternate;
+    }
+
+    @keyframes mouthTalkMobile {
+
+        0%,
+        100% {
+            height: 3px;
+        }
+
+        50% {
+            height: 6px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .mouth-talking {
+            animation: mouthTalkMobile 0.4s infinite alternate;
+        }
+    }
 }
 
-/* Эффекты тени и глубины */
-.player-shadow {
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+/* Добавьте в существующий CSS */
+
+/* Поддержка roundRect для старых браузеров */
+canvas {
+    border-radius: 0 !important;
 }
 
-/* Облака и солнце — стилизованы под цифровой пейзаж */
-.cloud, .sun {
-    filter: brightness(1.2) contrast(1.3);
-}
-
+/* Анимация для облаков */
 @keyframes cloudFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+    50% { transform: translateY(-5px); }
 }
 
 .cloud {
-    animation: cloudFloat 8s infinite ease-in-out;
+    animation: cloudFloat 6s infinite ease-in-out;
 }
 
+/* Анимация для солнца */
 @keyframes sunFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    50% { transform: translateY(-15px); }
 }
 
 .sun {
-    animation: sunFloat 5s infinite ease-in-out;
+    animation: sunFloat 4s infinite ease-in-out;
+}
+
+/* Дополнительные эффекты для персонажа */
+@keyframes playerBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.player-bounce {
+    animation: playerBounce 2s infinite;
+}
+
+/* Эффект тени для персонажа */
+.player-shadow {
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
 }

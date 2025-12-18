@@ -1,4 +1,4 @@
-// Добавляем поддержку roundRect (без изменений)
+// Добавляем поддержку roundRect для CanvasRenderingContext2D (если не поддерживается)
 if (!CanvasRenderingContext2D.prototype.roundRect) {
     CanvasRenderingContext2D.prototype.roundRect = function (x, y, width, height, radius) {
         if (width < 2 * radius) radius = width / 2;
@@ -11,13 +11,14 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         this.arcTo(x, y + height, x, y, radius);
         this.arcTo(x, y, x + width, y, radius);
         this.closePath();
+
         return this;
-    };
+    }
 }
 
 class GeometryDash {
     constructor() {
-        console.log('🎮 GeometryDash: Cyber Edition (v2.0)');
+        console.log('🎮 GeometryDash constructor called');
 
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
@@ -37,144 +38,181 @@ class GeometryDash {
 
         this.highScore = localStorage.getItem('geometryDashHighScore') || 0;
         if (this.highScoreElement) {
-            this.highScoreElement.textContent = `🏆 ${this.highScore}`;
+            this.highScoreElement.textContent = `🏆 Рекорд: ${this.highScore}`;
         }
 
         setTimeout(() => {
             this.setupEventListeners();
             this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         }, 100);
+
+        console.log('✅ Game initialized for mobile');
     }
 
     jump() {
-        if (this.gameState !== 'playing') return;
+        console.log('🎮 JUMP METHOD CALLED, gameState:', this.gameState);
+
+        if (this.gameState !== 'playing') {
+            console.log('⚠️ Cannot jump: game not playing');
+            return;
+        }
 
         if (!this.player.isJumping) {
+            console.log('✅ Player jumps!');
             this.player.velocityY = this.jumpForce;
             this.player.isJumping = true;
-            this.player.rotation = -20;
+            this.player.rotation = -25;
+            this.player.scale = 0.8;
 
-            // Цифровой эффект прыжка
-            this.createParticleEffect(
-                this.player.x + this.player.width / 2,
+            // Эффекты прыжка
+            this.createParticleEffect(this.player.x + this.player.width / 2,
                 this.player.y + this.player.height,
-                12, '#00f0ff'
-            );
+                8, '#FFFFFF');
             this.playSound('jump');
 
+            // Анимация рта при прыжке
             this.player.mouthState = 'surprised';
-            this.player.mouthAnimationTimer = 12;
+            this.player.mouthAnimationTimer = 10;
+
+            setTimeout(() => {
+                this.player.scale = 1;
+            }, 100);
+        } else {
+            console.log('⚠️ Player already jumping');
         }
     }
 
     setupMobile() {
         document.addEventListener('touchmove', (e) => {
-            if (e.scale !== 1) e.preventDefault();
+            if (e.scale !== 1) {
+                e.preventDefault();
+            }
         }, { passive: false });
 
-        document.addEventListener('selectstart', (e) => e.preventDefault());
+        document.addEventListener('selectstart', (e) => {
+            e.preventDefault();
+        });
 
         const viewport = document.querySelector('meta[name=viewport]');
         if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no');
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
         }
     }
 
     setupAudio() {
         this.audioContext = null;
         this.sounds = {
-            jump: { freq: 400, type: 'sine', duration: 0.12, gain: 0.15 },
-            score: { freq: 800, type: 'square', duration: 0.08, gain: 0.12 },
-            crash: { freq: 120, type: 'sawtooth', duration: 0.4, gain: 0.25 },
-            powerup: { freq: 900, type: 'sine', duration: 0.15, gain: 0.2 }
+            jump: { freq: 300, type: 'sine', duration: 0.1 },
+            score: { freq: 400, type: 'square', duration: 0.05 },
+            crash: { freq: 150, type: 'sawtooth', duration: 0.3 },
+            powerup: { freq: 600, type: 'triangle', duration: 0.2 }
         };
+
         this.initAudioOnFirstTouch();
     }
 
     initAudioOnFirstTouch() {
-        const init = () => {
+        const initAudio = () => {
             if (!this.audioContext) {
                 try {
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('🔊 Audio context initialized');
                 } catch (e) {
-                    console.warn('Audio not supported');
+                    console.log('❌ Audio not supported:', e);
                 }
             }
-            document.removeEventListener('touchstart', init);
-            document.removeEventListener('click', init);
+
+            document.removeEventListener('touchstart', initAudio);
+            document.removeEventListener('click', initAudio);
         };
-        document.addEventListener('touchstart', init, { once: true });
-        document.addEventListener('click', init, { once: true });
+
+        document.addEventListener('touchstart', initAudio, { once: true });
+        document.addEventListener('click', initAudio, { once: true });
     }
 
-    playSound(name) {
-        if (!this.audioContext || !this.sounds[name]) return;
-        const { freq, type, duration, gain } = this.sounds[name];
+    playSound(soundName) {
+        if (!this.audioContext) return;
+
+        const sound = this.sounds[soundName];
+        if (!sound) return;
+
         try {
-            const osc = this.audioContext.createOscillator();
+            const oscillator = this.audioContext.createOscillator();
             const gainNode = this.audioContext.createGain();
-            osc.connect(gainNode);
+
+            oscillator.connect(gainNode);
             gainNode.connect(this.audioContext.destination);
-            osc.frequency.value = freq;
-            osc.type = type;
-            gainNode.gain.setValueAtTime(gain, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
-            osc.start();
-            osc.stop(this.audioContext.currentTime + duration);
+
+            oscillator.frequency.value = sound.freq;
+            oscillator.type = sound.type;
+
+            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + sound.duration);
+
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + sound.duration);
         } catch (e) {
-            console.warn('Audio error:', e);
+            console.log('Audio error:', e);
         }
     }
 
     setupCanvas() {
-        const resize = () => {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
             this.canvas.width = window.innerWidth;
             this.canvas.height = window.innerHeight;
-            this.ground.y = this.canvas.height - 100;
+            this.ground.y = this.canvas.height - 120;
             this.createClouds();
             this.createGrass();
-        };
-        resize();
-        window.addEventListener('resize', resize);
+            this.groundDetails = null;
+        });
     }
 
     initGame() {
         this.gameState = 'menu';
         this.score = 0;
-        this.gameSpeed = 7;
-        this.gravity = 0.85;
-        this.jumpForce = -17;
+        this.gameSpeed = 8;
+        this.gravity = 0.9;
+        this.jumpForce = -18;
         this.combo = 0;
         this.multiplier = 1;
         this.screenShake = 0;
 
+        // Параметры для солнца
         this.sun = {
-            x: this.canvas.width - 70,
-            y: 70,
-            radius: 30,
-            baseY: 70,
+            x: this.canvas.width - 80,
+            y: 80,
+            radius: 40,
+            baseY: 80,
             waveOffset: 0,
-            speed: 0.025
+            speed: 0.02
         };
 
+        // Массив для облаков
         this.clouds = [];
         this.createClouds();
 
+        // Массив для травинок
         this.grassBlades = [];
         this.grassOffset = 0;
         this.createGrass();
 
+        // Детали земли (будут созданы при первом рисовании)
         this.groundDetails = null;
 
         this.player = {
             x: 100,
-            y: this.canvas.height - 150,
-            width: 48,
-            height: 48,
+            y: this.canvas.height - 180,
+            width: 50,
+            height: 50,
             velocityY: 0,
             isJumping: false,
             rotation: 0,
             scale: 1,
+            color: '#FF6B6B',
+            trail: [],
             mouthState: 'normal',
             mouthAnimationTimer: 0,
             mouthOpenness: 0,
@@ -185,119 +223,219 @@ class GeometryDash {
 
         this.obstacles = [];
         this.obstacleTimer = 0;
-        this.obstacleInterval = 80;
+        this.obstacleInterval = 70;
         this.particles = [];
         this.effects = [];
         this.collectibles = [];
 
         this.ground = {
-            y: this.canvas.height - 100,
-            height: 100
+            y: this.canvas.height - 120,
+            height: 120
         };
 
-        // НОВАЯ ПАЛИТРА: Кибер-тема
+        // Цветовые темы
         this.colorThemes = [
-            { primary: '#00f0ff', secondary: '#b040ff', bg: '#0a0e17' },
-            { primary: '#00ffcc', secondary: '#7020ff', bg: '#0c0f1a' },
-            { primary: '#40e0ff', secondary: '#ff30d0', bg: '#080b14' }
+            { primary: '#FF6B6B', secondary: '#4ECDC4', bg: '#64B5F6' },
+            { primary: '#FF9E6B', secondary: '#6BFFD3', bg: '#a18cd1' },
+            { primary: '#6B83FF', secondary: '#FF6BE8', bg: '#fbc2eb' }
         ];
         this.currentTheme = 0;
     }
 
     createClouds() {
         this.clouds = [];
-        const count = Math.floor(this.canvas.width / 200) + 4;
-        for (let i = 0; i < count; i++) {
+        const cloudCount = Math.floor(this.canvas.width / 150) + 3;
+
+        for (let i = 0; i < cloudCount; i++) {
             this.clouds.push({
-                x: Math.random() * this.canvas.width * 1.8,
-                y: Math.random() * 120 + 40,
-                width: Math.random() * 100 + 50,
-                height: Math.random() * 30 + 20,
-                speed: Math.random() * 0.4 + 0.1,
-                opacity: Math.random() * 0.3 + 0.2
+                x: Math.random() * this.canvas.width * 1.5,
+                y: Math.random() * 150 + 50,
+                width: Math.random() * 80 + 60,
+                height: Math.random() * 40 + 30,
+                speed: Math.random() * 0.5 + 0.2,
+                opacity: Math.random() * 0.4 + 0.3
             });
         }
     }
 
     createGrass() {
         this.grassBlades = [];
-        const count = Math.floor(this.canvas.width / 6);
-        for (let i = 0; i < count; i++) {
+        const grassCount = Math.floor(this.canvas.width / 8); // Больше травинок для плавного движения
+
+        for (let i = 0; i < grassCount; i++) {
+            const hasFlower = Math.random() > 0.9; // Реже цветы
+            const flowerColor = hasFlower ?
+                ['#FF6B6B', '#FFD166', '#FF4081'][Math.floor(Math.random() * 3)] :
+                null;
+
             this.grassBlades.push({
-                x: i * 6 + Math.random() * 3,
-                baseHeight: Math.random() * 12 + 8,
+                x: i * 8 + Math.random() * 5,
+                baseHeight: Math.random() * 15 + 10,
                 currentHeight: 0,
                 waveOffset: Math.random() * Math.PI * 2,
-                speed: Math.random() * 0.02 + 0.01,
-                moveSpeed: Math.random() * 0.4 + 0.2,
-                baseX: i * 6 + Math.random() * 3
+                width: Math.random() * 1 + 0.5,
+                speed: Math.random() * 0.03 + 0.01,
+                color: this.getGrassColor(),
+                hasFlower: hasFlower,
+                flowerColor: flowerColor,
+                moveSpeed: Math.random() * 0.5 + 0.3, // Скорость движения травинки
+                baseX: i * 8 + Math.random() * 5 // Базовая позиция X для анимации
             });
         }
     }
 
-    setupEventListeners() {
-        const startBtn = document.getElementById('startBtn');
-        const restartBtn = document.getElementById('restartBtn');
-        const shareBtn = document.getElementById('shareBtn');
+    getGrassColor() {
+        const greens = ['#4CAF50', '#66BB6A', '#81C784', '#43A047', '#388E3C'];
+        return greens[Math.floor(Math.random() * greens.length)];
+    }
 
-        if (startBtn) startBtn.addEventListener('click', () => this.startGame());
-        if (restartBtn) restartBtn.addEventListener('click', () => this.restartGame());
-        if (shareBtn) shareBtn.addEventListener('click', () => this.shareScore());
+    setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+
+        const startBtn = document.getElementById('startBtn');
+        if (startBtn) {
+            startBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.startGame();
+            });
+
+            startBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.startGame();
+            }, { passive: false });
+        }
+
+        const restartBtn = document.getElementById('restartBtn');
+        if (restartBtn) {
+            restartBtn.addEventListener('click', () => this.restartGame());
+        }
+
+        const shareBtn = document.getElementById('shareBtn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => this.shareScore());
+        }
 
         this.setupCanvasControls();
 
         document.addEventListener('keydown', (e) => {
-            if (['Space', 'ArrowUp'].includes(e.code) || e.key === ' ') {
+            if (e.code === 'Space' || e.key === ' ' || e.code === 'ArrowUp') {
                 e.preventDefault();
                 this.jump();
             }
         });
+
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+
+        console.log('✅ All event listeners setup complete');
     }
 
     setupCanvasControls() {
-        const handle = (e) => {
-            if (e.type === 'touchstart') e.preventDefault();
+        const handleJump = (e) => {
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+            }
+
             if (this.gameState === 'playing') {
                 this.jump();
-                if (this.isMobile) this.createTapEffect(e);
-            } else if (this.gameState === 'menu') {
+
+                if (this.isMobile) {
+                    this.createTapEffect(e);
+                }
+            }
+
+            if (this.gameState === 'menu') {
                 this.startGame();
             }
         };
-        this.canvas.addEventListener('click', handle);
-        this.canvas.addEventListener('touchstart', handle, { passive: false });
+
+        this.canvas.addEventListener('click', handleJump);
+        this.canvas.addEventListener('touchstart', handleJump, { passive: false });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault();
+                handleJump(e);
+            }
+        });
     }
 
     createTapEffect(e) {
-        let x = e.clientX || (e.touches?.[0]?.clientX || 0);
-        let y = e.clientY || (e.touches?.[0]?.clientY || 0);
+        let x, y;
+        if (e.touches && e.touches[0]) {
+            x = e.touches[0].clientX;
+            y = e.touches[0].clientY;
+        } else {
+            x = e.clientX;
+            y = e.clientY;
+        }
 
         const effect = document.createElement('div');
-        Object.assign(effect.style, {
-            position: 'fixed',
-            left: (x - 20) + 'px',
-            top: (y - 20) + 'px',
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(0,240,255,0.6), transparent)',
-            border: '1px solid rgba(0,240,255,0.4)',
-            zIndex: '9998',
-            pointerEvents: 'none',
-            animation: 'tapEffect 0.4s forwards'
-        });
+        effect.style.position = 'fixed';
+        effect.style.left = (x - 25) + 'px';
+        effect.style.top = (y - 25) + 'px';
+        effect.style.width = '50px';
+        effect.style.height = '50px';
+        effect.style.borderRadius = '50%';
+        effect.style.backgroundColor = 'rgba(255, 107, 107, 0.3)';
+        effect.style.border = '2px solid rgba(255, 107, 107, 0.5)';
+        effect.style.zIndex = '9998';
+        effect.style.pointerEvents = 'none';
+        effect.style.animation = 'tapEffect 0.5s forwards';
+
         document.body.appendChild(effect);
-        setTimeout(() => document.body.removeChild(effect), 400);
+
+        setTimeout(() => {
+            document.body.removeChild(effect);
+        }, 500);
+    }
+
+    setupSwipeControls() {
+        let startX, startY;
+
+        this.canvas.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', (e) => {
+            if (!startX || !startY) return;
+
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+
+            const diffX = endX - startX;
+            const diffY = endY - startY;
+
+            if (Math.abs(diffY) > Math.abs(diffX) && diffY < -30) {
+                this.jump();
+            }
+
+            startX = startY = null;
+        }, { passive: true });
     }
 
     startGame() {
-        this.gameState = 'playing';
-        document.getElementById('startScreen')?.classList.add('hidden');
-        document.getElementById('gameOverScreen')?.classList.add('hidden');
-        document.getElementById('menu')?.classList.add('hidden');
-        document.getElementById('gameContainer')?.classList.add('playing');
+        console.log('🎮 START GAME');
 
-        this.createParticleEffect(this.player.x, this.player.y, 20, '#00f0ff');
+        this.gameState = 'playing';
+
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const menu = document.getElementById('menu');
+        const gameContainer = document.getElementById('gameContainer');
+
+        if (startScreen) startScreen.classList.add('hidden');
+        if (gameOverScreen) gameOverScreen.classList.add('hidden');
+        if (menu) menu.classList.add('hidden');
+
+        if (gameContainer) {
+            gameContainer.classList.add('playing');
+        }
+
+        this.createParticleEffect(this.player.x, this.player.y, 20, this.player.color);
         this.playSound('powerup');
         this.gameLoop();
     }
@@ -305,19 +443,26 @@ class GeometryDash {
     createParticleEffect(x, y, count, color) {
         for (let i = 0; i < count; i++) {
             this.particles.push({
-                x, y,
-                size: Math.random() * 3 + 1.5,
-                speedX: (Math.random() - 0.5) * 6,
-                speedY: (Math.random() - 0.5) * 6,
-                color,
+                x: x,
+                y: y,
+                size: Math.random() * 4 + 2,
+                speedX: (Math.random() - 0.5) * 8,
+                speedY: (Math.random() - 0.5) * 8,
+                color: color,
                 life: 1,
-                decay: Math.random() * 0.025 + 0.015
+                decay: Math.random() * 0.02 + 0.01
             });
         }
     }
 
     createTextEffect(text, x, y, color) {
-        this.effects.push({ text, x, y, color, life: 1 });
+        this.effects.push({
+            text: text,
+            x: x,
+            y: y,
+            color: color,
+            life: 1
+        });
     }
 
     update() {
@@ -326,15 +471,30 @@ class GeometryDash {
         this.updateMouthAnimation();
 
         this.sun.waveOffset += this.sun.speed;
-        this.sun.y = this.sun.baseY + Math.sin(this.sun.waveOffset) * 12;
+        this.sun.y = this.sun.baseY + Math.sin(this.sun.waveOffset) * 15;
 
         this.updateClouds();
+
         this.updateGrass();
 
         this.player.velocityY += this.gravity;
         this.player.y += this.player.velocityY;
-        this.player.rotation += this.player.velocityY * 0.4;
-        this.player.rotation = Math.max(-20, Math.min(20, this.player.rotation));
+
+        this.player.rotation += this.player.velocityY * 0.5;
+        this.player.rotation = Math.max(-25, Math.min(25, this.player.rotation));
+
+        this.player.trail.push({
+            x: this.player.x + this.player.width / 2,
+            y: this.player.y + this.player.height / 2,
+            life: 1
+        });
+
+        if (this.player.trail.length > 5) {
+            this.player.trail.shift();
+        }
+
+        this.player.trail.forEach(point => point.life -= 0.2);
+        this.player.trail = this.player.trail.filter(point => point.life > 0);
 
         if (this.player.y + this.player.height > this.ground.y) {
             this.player.y = this.ground.y - this.player.height;
@@ -347,91 +507,112 @@ class GeometryDash {
         if (this.obstacleTimer > this.obstacleInterval) {
             this.createObstacle();
             this.obstacleTimer = 0;
-            this.obstacleInterval = Math.max(35, this.obstacleInterval - 0.18);
+            this.obstacleInterval = Math.max(40, this.obstacleInterval - 0.2);
         }
 
-        if (Math.random() < 0.015) this.createCollectible();
+        if (Math.random() < 0.02) {
+            this.createCollectible();
+        }
 
-        // Обновление препятствий
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
-            const obs = this.obstacles[i];
-            obs.x -= this.gameSpeed;
+            const obstacle = this.obstacles[i];
+            obstacle.x -= this.gameSpeed;
 
-            if (this.checkCollision(this.player, obs)) {
+            if (this.checkCollision(this.player, obstacle)) {
                 this.gameOver();
                 return;
             }
 
-            if (obs.x + obs.width < 0) {
+            if (obstacle.x + obstacle.width < 0) {
                 this.obstacles.splice(i, 1);
                 this.score += 10 * this.multiplier;
                 this.combo++;
 
                 if (this.combo % 5 === 0) {
                     this.multiplier++;
-                    this.createTextEffect('x' + this.multiplier, obs.x, obs.y, '#00ffcc');
+                    this.createTextEffect('COMBO x' + this.multiplier, obstacle.x, obstacle.y, '#FFD700');
                     this.playSound('powerup');
+
                     this.player.mouthState = 'smiling';
-                    this.player.mouthAnimationTimer = 18;
+                    this.player.mouthAnimationTimer = 15;
                 }
+
                 this.updateScore();
-                this.createParticleEffect(obs.x, obs.y, 6, obs.color);
+                this.createParticleEffect(obstacle.x, obstacle.y, 5, obstacle.color);
             }
         }
 
-        // Сбор предметов
         for (let i = this.collectibles.length - 1; i >= 0; i--) {
-            const c = this.collectibles[i];
-            c.x -= this.gameSpeed;
-            c.rotation = (c.rotation || 0) + 0.15;
+            const collectible = this.collectibles[i];
+            collectible.x -= this.gameSpeed;
+            collectible.rotation += 0.1;
 
-            if (this.checkCollision(this.player, c)) {
+            if (this.checkCollision(this.player, collectible)) {
                 this.collectibles.splice(i, 1);
                 this.score += 50;
-                this.createTextEffect('+50', c.x, c.y, '#00ffcc');
-                this.createParticleEffect(c.x, c.y, 12, '#b040ff');
+                this.createTextEffect('+50', collectible.x, collectible.y, '#00FF00');
+                this.createParticleEffect(collectible.x, collectible.y, 15, '#FFFF00');
                 this.playSound('score');
+
                 this.player.mouthState = 'smiling';
                 this.player.mouthAnimationTimer = 20;
                 this.player.isTalking = true;
-                this.player.talkTimer = 12;
+                this.player.talkTimer = 10;
+
                 this.updateScore();
-            } else if (c.x + c.width < 0) {
+            } else if (collectible.x + collectible.width < 0) {
                 this.collectibles.splice(i, 1);
             }
         }
 
-        this.gameSpeed += 0.0012;
+        this.gameSpeed += 0.001;
+
         this.updateParticles();
         this.updateEffects();
 
         if (this.screenShake > 0) {
-            this.screenShake *= 0.92;
+            this.screenShake *= 0.9;
             if (this.screenShake < 0.1) this.screenShake = 0;
         }
     }
 
     updateClouds() {
         for (let i = this.clouds.length - 1; i >= 0; i--) {
-            const c = this.clouds[i];
-            c.x -= c.speed * 0.6;
-            if (c.x + c.width < 0) {
-                c.x = this.canvas.width + Math.random() * 200;
-                c.y = Math.random() * 120 + 40;
+            const cloud = this.clouds[i];
+            cloud.x -= cloud.speed * 0.5;
+
+            if (cloud.x + cloud.width < 0) {
+                cloud.x = this.canvas.width + Math.random() * 100;
+                cloud.y = Math.random() * 150 + 50;
             }
         }
     }
 
     updateGrass() {
-        for (const blade of this.grassBlades) {
+        this.grassOffset += 0.1;
+
+        for (let i = 0; i < this.grassBlades.length; i++) {
+            const blade = this.grassBlades[i];
+
             if (blade.currentHeight < blade.baseHeight) {
-                blade.currentHeight += 0.4;
+                blade.currentHeight += 0.5;
             }
+
             blade.waveOffset += blade.speed;
-            blade.x -= blade.moveSpeed * 0.6;
+
+            // Двигаем травинку вместе с препятствиями
+            blade.x -= blade.moveSpeed * 0.7; // Медленнее, чем препятствия
+
+            // Если травинка ушла за левую границу, перемещаем ее вправо
             if (blade.x < -10) {
                 blade.x = this.canvas.width + 10;
+                // Сброс высоты для плавного появления
                 blade.currentHeight = 0;
+            }
+
+            const distanceToPlayer = Math.abs(this.player.x - blade.x);
+            if (distanceToPlayer < 100 && this.player.isJumping) {
+                blade.waveOffset += 0.1;
             }
         }
     }
@@ -450,10 +631,10 @@ class GeometryDash {
         }
 
         if (this.player.isTalking) {
-            this.player.mouthCycle = (this.player.mouthCycle + 0.4) % Math.PI;
-            this.player.mouthOpenness = Math.sin(this.player.mouthCycle) * 0.6 + 0.4;
+            this.player.mouthCycle = (this.player.mouthCycle + 0.3) % Math.PI;
+            this.player.mouthOpenness = Math.sin(this.player.mouthCycle) * 0.5 + 0.5;
         } else {
-            this.player.mouthCycle = (this.player.mouthCycle + 0.06) % Math.PI;
+            this.player.mouthCycle = (this.player.mouthCycle + 0.05) % Math.PI;
             this.player.mouthOpenness = Math.sin(this.player.mouthCycle) * 0.2 + 0.2;
         }
     }
@@ -461,11 +642,12 @@ class GeometryDash {
     createCollectible() {
         this.collectibles.push({
             x: this.canvas.width,
-            y: this.ground.y - 70,
-            width: 22,
-            height: 22,
-            color: '#00ffcc',
-            type: 'data'
+            y: this.ground.y - 80,
+            width: 20,
+            height: 20,
+            color: '#FFFF00',
+            rotation: 0,
+            type: 'coin'
         });
     }
 
@@ -475,24 +657,32 @@ class GeometryDash {
             p.x += p.speedX;
             p.y += p.speedY;
             p.life -= p.decay;
-            if (p.life <= 0) this.particles.splice(i, 1);
+
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
         }
     }
 
     updateEffects() {
         for (let i = this.effects.length - 1; i >= 0; i--) {
-            const e = this.effects[i];
-            e.life -= 0.025;
-            e.y -= 2.5;
-            if (e.life <= 0) this.effects.splice(i, 1);
+            const effect = this.effects[i];
+            effect.life -= 0.02;
+            effect.y -= 2;
+
+            if (effect.life <= 0) {
+                this.effects.splice(i, 1);
+            }
         }
     }
 
     createObstacle() {
         const types = [
-            { width: 30, height: 55, type: 'spike' },
-            { width: 70, height: 35, type: 'platform' }
+            { width: 35, height: 60, type: 'spike' },
+            { width: 35, height: 90, type: 'spike' },
+            { width: 80, height: 40, type: 'platform' }
         ];
+
         const type = types[Math.floor(Math.random() * types.length)];
         const theme = this.colorThemes[this.currentTheme];
 
@@ -506,89 +696,95 @@ class GeometryDash {
         });
     }
 
-    checkCollision(a, b) {
-        return a.x < b.x + b.width &&
-               a.x + a.width > b.x &&
-               a.y < b.y + b.height &&
-               a.y + a.height > b.y;
+    checkCollision(player, object) {
+        return player.x < object.x + object.width &&
+            player.x + player.width > object.x &&
+            player.y < object.y + object.height &&
+            player.y + player.height > object.y;
     }
 
     draw() {
-        const shakeX = this.screenShake * (Math.random() - 0.5) * 8;
-        const shakeY = this.screenShake * (Math.random() - 0.5) * 8;
+        const shakeX = this.screenShake * (Math.random() - 0.5) * 10;
+        const shakeY = this.screenShake * (Math.random() - 0.5) * 10;
+
         this.ctx.save();
         this.ctx.translate(shakeX, shakeY);
 
         const theme = this.colorThemes[this.currentTheme];
 
-        // Фон
-        this.ctx.fillStyle = theme.bg;
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, theme.bg);
+        gradient.addColorStop(1, this.darkenColor(theme.bg, 20));
+        this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Градиент неба (очень тонкий)
-        const skyGrad = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height * 0.4);
-        skyGrad.addColorStop(0, 'rgba(10, 20, 40, 0.2)');
-        skyGrad.addColorStop(1, 'transparent');
-        this.ctx.fillStyle = skyGrad;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height * 0.4);
-
         this.drawClouds();
+
         this.drawSun();
 
-        // Земля
-        this.ctx.fillStyle = '#0f1525';
+        this.ctx.fillStyle = '#81C784';
         this.ctx.fillRect(0, this.ground.y, this.canvas.width, this.ground.height);
 
         this.drawGrass();
 
-        // Сбор предметов
-        this.collectibles.forEach(c => {
+        this.collectibles.forEach(collectible => {
             this.ctx.save();
-            this.ctx.translate(c.x + c.width/2, c.y + c.height/2);
-            this.ctx.rotate(c.rotation || 0);
-            this.ctx.fillStyle = c.color;
+            this.ctx.translate(collectible.x + collectible.width / 2, collectible.y + collectible.height / 2);
+            this.ctx.rotate(collectible.rotation);
+
+            this.ctx.fillStyle = collectible.color;
             this.ctx.beginPath();
-            this.ctx.arc(0, 0, c.width/2, 0, Math.PI*2);
+            this.ctx.arc(0, 0, collectible.width / 2, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Светодиодный центр
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.beginPath();
-            this.ctx.arc(0, 0, 3, 0, Math.PI*2);
-            this.ctx.fill();
+            this.ctx.strokeStyle = '#FFA000';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+
             this.ctx.restore();
         });
 
-        // Препятствия
-        this.obstacles.forEach(obs => {
-            this.ctx.fillStyle = obs.color;
-            if (obs.type === 'spike') {
+        this.obstacles.forEach(obstacle => {
+            this.ctx.fillStyle = obstacle.color;
+
+            if (obstacle.type === 'spike') {
                 this.ctx.beginPath();
-                this.ctx.moveTo(obs.x, obs.y + obs.height);
-                this.ctx.lineTo(obs.x + obs.width/2, obs.y);
-                this.ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                this.ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
+                this.ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
+                this.ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
                 this.ctx.closePath();
                 this.ctx.fill();
             } else {
-                this.ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-                // Неоновый контур
-                this.ctx.strokeStyle = '#ffffff';
-                this.ctx.lineWidth = 1;
-                this.ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+                this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
             }
         });
 
-        // Персонаж
+        this.ctx.strokeStyle = theme.primary;
+        this.ctx.lineWidth = 3;
+        this.ctx.globalAlpha = 0.6;
+        this.ctx.beginPath();
+        this.player.trail.forEach((point, index) => {
+            if (index === 0) {
+                this.ctx.moveTo(point.x, point.y);
+            } else {
+                this.ctx.lineTo(point.x, point.y);
+            }
+        });
+        this.ctx.stroke();
+        this.ctx.globalAlpha = 1;
+
         this.ctx.save();
         this.ctx.translate(
             this.player.x + this.player.width / 2,
             this.player.y + this.player.height / 2
         );
         this.ctx.rotate(this.player.rotation * Math.PI / 180);
-        this.drawCyberPlayer();
+        this.ctx.scale(this.player.scale, this.player.scale);
+
+        this.drawNewPlayer();
+
         this.ctx.restore();
 
-        // Частицы
         this.particles.forEach(p => {
             this.ctx.globalAlpha = p.life;
             this.ctx.fillStyle = p.color;
@@ -598,13 +794,12 @@ class GeometryDash {
         });
         this.ctx.globalAlpha = 1;
 
-        // Текстовые эффекты
-        this.effects.forEach(e => {
-            this.ctx.globalAlpha = e.life;
-            this.ctx.fillStyle = e.color;
-            this.ctx.font = 'bold 18px "Roboto Mono", monospace';
+        this.effects.forEach(effect => {
+            this.ctx.globalAlpha = effect.life;
+            this.ctx.fillStyle = effect.color;
+            this.ctx.font = 'bold 20px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(e.text, e.x, e.y);
+            this.ctx.fillText(effect.text, effect.x, effect.y);
         });
         this.ctx.globalAlpha = 1;
 
@@ -614,232 +809,388 @@ class GeometryDash {
     drawClouds() {
         this.clouds.forEach(cloud => {
             this.ctx.save();
-            this.ctx.globalAlpha = cloud.opacity * 0.7;
-            this.ctx.fillStyle = '#406080';
+            this.ctx.globalAlpha = cloud.opacity;
+            this.ctx.fillStyle = '#FFFFFF';
 
-            // "Голографический" стиль: рваные формы
+            const centerX = cloud.x + cloud.width / 2;
+            const centerY = cloud.y + cloud.height / 2;
+
             this.ctx.beginPath();
-            this.ctx.moveTo(cloud.x, cloud.y + cloud.height * 0.5);
-            this.ctx.lineTo(cloud.x + cloud.width * 0.3, cloud.y);
-            this.ctx.lineTo(cloud.x + cloud.width * 0.7, cloud.y + cloud.height * 0.2);
-            this.ctx.lineTo(cloud.x + cloud.width, cloud.y + cloud.height * 0.5);
-            this.ctx.lineTo(cloud.x + cloud.width * 0.8, cloud.y + cloud.height);
-            this.ctx.lineTo(cloud.x + cloud.width * 0.2, cloud.y + cloud.height * 0.8);
-            this.ctx.closePath();
-            this.ctx.fill();
+            this.ctx.ellipse(centerX, centerY, cloud.width / 2, cloud.height / 2, 0, 0, Math.PI * 2);
 
+            this.ctx.ellipse(centerX - cloud.width / 3, centerY - cloud.height / 4, cloud.width / 3, cloud.height / 3, 0, 0, Math.PI * 2);
+            this.ctx.ellipse(centerX + cloud.width / 3, centerY - cloud.height / 4, cloud.width / 3, cloud.height / 3, 0, 0, Math.PI * 2);
+            this.ctx.ellipse(centerX - cloud.width / 4, centerY + cloud.height / 4, cloud.width / 4, cloud.height / 4, 0, 0, Math.PI * 2);
+            this.ctx.ellipse(centerX + cloud.width / 4, centerY + cloud.height / 4, cloud.width / 4, cloud.height / 4, 0, 0, Math.PI * 2);
+
+            this.ctx.fill();
             this.ctx.restore();
         });
     }
 
     drawSun() {
-        // Луна с кольцом данных
         this.ctx.save();
-        this.ctx.translate(this.sun.x, this.sun.y);
 
-        // Основной диск
-        this.ctx.fillStyle = '#e0e0ff';
+        const gradient = this.ctx.createRadialGradient(
+            this.sun.x, this.sun.y, this.sun.radius,
+            this.sun.x, this.sun.y, this.sun.radius * 2
+        );
+        gradient.addColorStop(0, '#FFEB3B');
+        gradient.addColorStop(0.7, '#FFC107');
+        gradient.addColorStop(1, 'rgba(255, 193, 7, 0)');
+
+        this.ctx.fillStyle = gradient;
         this.ctx.beginPath();
-        this.ctx.arc(0, 0, this.sun.radius, 0, Math.PI * 2);
+        this.ctx.arc(this.sun.x, this.sun.y, this.sun.radius * 2, 0, Math.PI * 2);
         this.ctx.fill();
 
-        // Кольцо данных
-        this.ctx.strokeStyle = '#00f0ff';
-        this.ctx.lineWidth = 2;
+        this.ctx.fillStyle = '#FFEB3B';
         this.ctx.beginPath();
-        this.ctx.arc(0, 0, this.sun.radius + 8, 0, Math.PI * 2);
-        this.ctx.stroke();
+        this.ctx.arc(this.sun.x, this.sun.y, this.sun.radius, 0, Math.PI * 2);
+        this.ctx.fill();
 
-        // Светодиоды на кольце
-        for (let i = 0; i < 8; i++) {
-            const a = (i / 8) * Math.PI * 2 + this.sun.waveOffset;
-            const r = this.sun.radius + 8;
-            const x = Math.cos(a) * r;
-            const y = Math.sin(a) * r;
-            this.ctx.fillStyle = i % 2 === 0 ? '#00f0ff' : '#b040ff';
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
+        this.ctx.fillStyle = '#FF9800';
+
+        this.ctx.beginPath();
+        this.ctx.arc(this.sun.x - 12, this.sun.y - 8, 4, 0, Math.PI * 2);
+        this.ctx.arc(this.sun.x + 12, this.sun.y - 8, 4, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.beginPath();
+        this.ctx.arc(this.sun.x, this.sun.y + 5, 15, 0.2, Math.PI - 0.2);
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeStyle = '#FF9800';
+        this.ctx.stroke();
 
         this.ctx.restore();
     }
 
     drawGrass() {
-        // Цифровая земля
-        this.ctx.fillStyle = '#121828';
-        this.ctx.fillRect(0, this.ground.y - 8, this.canvas.width, 8);
+        // Основной слой травы (зеленая полоса) - тоже двигается
+        this.ctx.fillStyle = '#4CAF50';
+        this.ctx.fillRect(0, this.ground.y - 10, this.canvas.width, 10);
 
+        // Также двигаем детали земли
+        this.drawGroundDetails();
+
+        // Рисуем отдельные травинки
         this.grassBlades.forEach(blade => {
-            const x = blade.x;
-            const baseY = this.ground.y - 8;
-            const h = Math.max(0, blade.currentHeight + Math.sin(blade.waveOffset + x * 0.02) * 3);
+            this.ctx.save();
 
-            this.ctx.strokeStyle = '#00f0ff';
-            this.ctx.lineWidth = 1.2;
+            const x = blade.x;
+            const baseY = this.ground.y - 10;
+
+            const waveEffect = Math.sin(blade.waveOffset + x * 0.01) * 2;
+            const currentHeight = Math.max(0, blade.currentHeight + waveEffect);
+
+            this.ctx.fillStyle = blade.color;
+            this.ctx.strokeStyle = this.darkenColor(blade.color, 20);
+            this.ctx.lineWidth = blade.width;
+
             this.ctx.beginPath();
             this.ctx.moveTo(x, baseY);
-            this.ctx.lineTo(x + Math.sin(blade.waveOffset) * 4, baseY - h);
+
+            const cp1x = x + Math.sin(blade.waveOffset) * 3;
+            const cp1y = baseY - currentHeight * 0.3;
+            const cp2x = x - Math.sin(blade.waveOffset + 0.5) * 2;
+            const cp2y = baseY - currentHeight * 0.7;
+
+            this.ctx.bezierCurveTo(
+                cp1x, cp1y,
+                cp2x, cp2y,
+                x + Math.sin(blade.waveOffset) * 5, baseY - currentHeight
+            );
+
             this.ctx.stroke();
 
-            // Светодиод на кончике
-            if (h > 5) {
-                this.ctx.fillStyle = '#00ffcc';
+            this.ctx.beginPath();
+            const tipX = x + Math.sin(blade.waveOffset) * 5;
+            const tipY = baseY - currentHeight;
+            this.ctx.moveTo(tipX, tipY);
+            this.ctx.lineTo(tipX - 2, tipY - 3);
+            this.ctx.lineTo(tipX + 2, tipY - 3);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            if (blade.hasFlower && blade.flowerColor) {
+                this.ctx.fillStyle = blade.flowerColor;
                 this.ctx.beginPath();
-                this.ctx.arc(x + Math.sin(blade.waveOffset) * 4, baseY - h, 1.5, 0, Math.PI * 2);
+                this.ctx.arc(tipX, tipY - 5, 2, 0, Math.PI * 2);
                 this.ctx.fill();
+
+                this.ctx.globalAlpha = 0.8;
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i * Math.PI * 2) / 6;
+                    const petalX = tipX + Math.cos(angle) * 4;
+                    const petalY = tipY - 5 + Math.sin(angle) * 4;
+                    this.ctx.beginPath();
+                    this.ctx.arc(petalX, petalY, 1.5, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                this.ctx.globalAlpha = 1;
             }
+
+            this.ctx.restore();
         });
     }
 
-    drawCyberPlayer() {
-        const w = this.player.width;
-        const h = this.player.height;
-        const theme = this.colorThemes[this.currentTheme];
+    drawGroundDetails() {
+        if (!this.groundDetails) {
+            this.groundDetails = [];
+            for (let i = 0; i < 30; i++) {
+                this.groundDetails.push({
+                    x: Math.random() * this.canvas.width,
+                    y: this.ground.y - 5 + Math.random() * 5,
+                    size: Math.random() * 3 + 1,
+                    colorIndex: Math.floor(Math.random() * 3),
+                    moveSpeed: Math.random() * 0.3 + 0.2
+                });
+            }
+        }
 
-        // Основной куб
+        const colors = ['#795548', '#5D4037', '#4E342E'];
+        this.groundDetails.forEach(detail => {
+            // Двигаем детали земли
+            detail.x -= detail.moveSpeed * 0.6;
+
+            // Если деталь ушла за левую границу, перемещаем ее вправо
+            if (detail.x < -10) {
+                detail.x = this.canvas.width + 10;
+                detail.y = this.ground.y - 5 + Math.random() * 5;
+            }
+
+            this.ctx.fillStyle = colors[detail.colorIndex];
+            this.ctx.beginPath();
+            this.ctx.arc(detail.x, detail.y, detail.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    }
+
+    drawNewPlayer() {
+        const theme = this.colorThemes[this.currentTheme];
+        const width = this.player.width;
+        const height = this.player.height;
+
         this.ctx.fillStyle = theme.primary;
         this.ctx.beginPath();
-        this.ctx.roundRect(-w/2, -h/2, w, h, 8);
+        this.ctx.roundRect(-width / 2, -height / 2, width, height, 15);
         this.ctx.fill();
 
-        // Голубой градиент
-        const grad = this.ctx.createLinearGradient(-w/2, -h/2, w/2, h/2);
-        grad.addColorStop(0, 'rgba(0,240,255,0.3)');
-        grad.addColorStop(1, 'transparent');
-        this.ctx.fillStyle = grad;
+        const shadowGradient = this.ctx.createLinearGradient(
+            -width / 2, -height / 2,
+            width / 2, height / 2
+        );
+        shadowGradient.addColorStop(0, 'rgba(255,255,255,0.2)');
+        shadowGradient.addColorStop(1, 'rgba(0,0,0,0.1)');
+
+        this.ctx.fillStyle = shadowGradient;
         this.ctx.beginPath();
-        this.ctx.roundRect(-w/2, -h/2, w, h, 8);
+        this.ctx.roundRect(-width / 2, -height / 2, width, height, 15);
         this.ctx.fill();
 
-        // Контур
-        this.ctx.strokeStyle = 'rgba(0,240,255,0.6)';
-        this.ctx.lineWidth = 1.5;
+        this.ctx.strokeStyle = this.darkenColor(theme.primary, 30);
+        this.ctx.lineWidth = 2;
         this.ctx.beginPath();
-        this.ctx.roundRect(-w/2, -h/2, w, h, 8);
+        this.ctx.roundRect(-width / 2, -height / 2, width, height, 15);
         this.ctx.stroke();
 
-        // Глаза (светодиоды)
-        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillStyle = '#FFFFFF';
         this.ctx.beginPath();
-        this.ctx.arc(-w/3.5, -h/3.5, 4.5, 0, Math.PI * 2);
-        this.ctx.arc(w/3.5, -h/3.5, 4.5, 0, Math.PI * 2);
+        this.ctx.arc(-width / 4, -height / 4, 6, 0, Math.PI * 2);
+        this.ctx.arc(width / 4, -height / 4, 6, 0, Math.PI * 2);
         this.ctx.fill();
 
         this.ctx.fillStyle = '#000000';
         this.ctx.beginPath();
-        this.ctx.arc(-w/3.5, -h/3.5, 2, 0, Math.PI * 2);
-        this.ctx.arc(w/3.5, -h/3.5, 2, 0, Math.PI * 2);
+        this.ctx.arc(-width / 4, -height / 4, 3, 0, Math.PI * 2);
+        this.ctx.arc(width / 4, -height / 4, 3, 0, Math.PI * 2);
         this.ctx.fill();
 
-        // Рот
-        this.drawCyberMouth();
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.beginPath();
+        this.ctx.arc(-width / 4 - 1, -height / 4 - 1, 1.5, 0, Math.PI * 2);
+        this.ctx.arc(width / 4 - 1, -height / 4 - 1, 1.5, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.drawNewMouth();
     }
 
-    drawCyberMouth() {
-        const y = this.player.height / 6;
-        let w = 20, h = 4, curve = 0, isRound = false;
+    drawNewMouth() {
+        const mouthY = this.player.height / 8;
+        const mouthWidth = 22;
+        let mouthHeight = 6;
+        let mouthCurve = 0;
+        let isRound = false;
 
         switch (this.player.mouthState) {
             case 'normal':
-                h = 3 + this.player.mouthOpenness * 3;
-                curve = 0.5;
+                mouthHeight = 5 + (this.player.mouthOpenness * 2);
+                mouthCurve = 0.6;
                 break;
+
             case 'smiling':
-                h = 5 + this.player.mouthOpenness * 4;
-                curve = 1.5;
+                mouthHeight = 6 + (this.player.mouthOpenness * 4);
+                mouthCurve = 1.8;
                 break;
+
             case 'surprised':
-                h = 12 + this.player.mouthOpenness * 4;
+                mouthHeight = 10 + (this.player.mouthOpenness * 6);
+                mouthCurve = 0;
                 isRound = true;
                 break;
+
             case 'sad':
-                h = 3 + this.player.mouthOpenness * 2;
-                curve = -0.6;
+                mouthHeight = 4 + (this.player.mouthOpenness * 2);
+                mouthCurve = -0.8;
                 break;
         }
 
         if (this.player.isTalking && this.player.mouthOpenness > 0.8) {
-            h = 14;
+            mouthHeight = 12;
+            mouthCurve = 0;
             isRound = true;
         }
 
         this.ctx.fillStyle = '#000000';
+
         if (isRound) {
             this.ctx.beginPath();
-            this.ctx.ellipse(0, y, w/2, h/2, 0, 0, Math.PI*2);
+            this.ctx.ellipse(0, mouthY, mouthWidth / 2, mouthHeight / 2, 0, 0, Math.PI * 2);
             this.ctx.fill();
 
             if (this.player.isTalking) {
-                this.ctx.fillStyle = '#b040ff';
+                this.ctx.fillStyle = '#FF6B6B';
                 this.ctx.beginPath();
-                this.ctx.ellipse(0, y + h/3, 4, 3, 0, 0, Math.PI*2);
+                this.ctx.ellipse(0, mouthY + mouthHeight / 3, 5, 4, 0, 0, Math.PI * 2);
                 this.ctx.fill();
             }
         } else {
-            this.ctx.strokeStyle = '#ffffff';
-            this.ctx.lineWidth = 1.5;
             this.ctx.beginPath();
-            if (curve > 0) {
-                this.ctx.ellipse(0, y + h/3, w/2, h/2, 0, Math.PI*0.15, Math.PI*0.85);
+
+            if (mouthCurve > 0) {
+                this.ctx.ellipse(0, mouthY + mouthHeight / 3, mouthWidth / 2, mouthHeight / 2,
+                    0, Math.PI * 0.1, Math.PI * 0.9);
             } else {
-                this.ctx.ellipse(0, y - h/3, w/2, h/2, 0, Math.PI*1.15, Math.PI*1.85);
+                this.ctx.ellipse(0, mouthY - mouthHeight / 3, mouthWidth / 2, mouthHeight / 2,
+                    0, Math.PI * 1.1, Math.PI * 1.9);
             }
+
+            this.ctx.lineWidth = 3;
             this.ctx.stroke();
+
+            if (mouthCurve > 1 && this.player.mouthOpenness > 0.7) {
+                this.ctx.fillStyle = '#FF6B6B';
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, mouthY + mouthHeight / 1.5, 6, 5, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
         }
+
+        this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        this.ctx.beginPath();
+        if (isRound) {
+            this.ctx.ellipse(-mouthWidth / 4, mouthY - mouthHeight / 4, 3, 2, 0, 0, Math.PI * 2);
+        } else if (mouthCurve > 0) {
+            this.ctx.ellipse(-mouthWidth / 3, mouthY + mouthHeight / 4, 4, 2, 0, 0, Math.PI * 2);
+        }
+        this.ctx.fill();
     }
 
     darkenColor(color, percent) {
-        const num = parseInt(color.slice(1), 16);
+        const num = parseInt(color.replace("#", ""), 16);
         const amt = Math.round(2.55 * percent);
-        const r = Math.max(0, (num >> 16) - amt);
-        const g = Math.max(0, ((num >> 8) & 0xFF) - amt);
-        const b = Math.max(0, (num & 0xFF) - amt);
-        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        const R = (num >> 16) - amt;
+        const G = (num >> 8 & 0x00FF) - amt;
+        const B = (num & 0x0000FF) - amt;
+        return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
     }
 
     updateScore() {
-        if (this.scoreElement) this.scoreElement.textContent = `⭐ ${this.score}`;
+        if (this.scoreElement) {
+            this.scoreElement.textContent = `⭐ Очки: ${this.score}`;
+        }
+
         if (this.score > this.highScore) {
             this.highScore = this.score;
+            if (this.highScoreElement) {
+                this.highScoreElement.textContent = `🏆 Рекорд: ${this.highScore}`;
+            }
             localStorage.setItem('geometryDashHighScore', this.highScore);
-            if (this.highScoreElement) this.highScoreElement.textContent = `🏆 ${this.highScore}`;
         }
     }
 
     gameOver() {
         this.gameState = 'gameover';
+
         this.player.mouthState = 'sad';
         this.player.mouthAnimationTimer = 30;
 
-        document.getElementById('gameOverScreen')?.classList.remove('hidden');
-        document.getElementById('finalScore')?.textContent = `⭐ ${this.score}`;
-        document.getElementById('menu')?.classList.remove('hidden');
-        document.getElementById('gameContainer')?.classList.remove('playing');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScore = document.getElementById('finalScore');
+        const menu = document.getElementById('menu');
+        const gameContainer = document.getElementById('gameContainer');
 
-        this.screenShake = 2.5;
-        this.createParticleEffect(this.player.x + 24, this.player.y + 24, 35, '#b040ff');
+        if (gameOverScreen) gameOverScreen.classList.remove('hidden');
+        if (finalScore) finalScore.textContent = `⭐ Очки: ${this.score}`;
+        if (menu) menu.classList.remove('hidden');
+        if (gameContainer) {
+            gameContainer.classList.remove('playing');
+        }
+
+        this.screenShake = 2;
+        this.createParticleEffect(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, 30, '#FF0000');
         this.playSound('crash');
+        this.sendScoreToBot();
     }
 
     restartGame() {
+        const gameContainer = document.getElementById('gameContainer');
+        if (gameContainer) {
+            gameContainer.classList.add('playing');
+        }
+
+        const menu = document.getElementById('menu');
+        if (menu) {
+            menu.classList.add('hidden');
+        }
+
         this.currentTheme = (this.currentTheme + 1) % this.colorThemes.length;
         this.initGame();
         this.startGame();
     }
 
     shareScore() {
-        const text = `Я набрал ${this.score} очков в GeometryDash Cyber!`;
+        const shareText = `🎮 Я набрал ${this.score} очков в Geometry Dash Ultimate!`;
         if (navigator.share) {
-            navigator.share({ title: 'GeometryDash Cyber', text });
+            navigator.share({
+                title: 'Geometry Dash Ultimate',
+                text: shareText
+            });
         } else {
-            alert(text);
+            alert(shareText);
+        }
+    }
+
+    sendScoreToBot() {
+        try {
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'game_score',
+                    score: this.score,
+                    highScore: this.highScore
+                }));
+            }
+        } catch (e) {
+            console.log('Cannot send data to bot:', e);
         }
     }
 
     gameLoop() {
         this.update();
         this.draw();
+
         if (this.gameState === 'playing') {
             requestAnimationFrame(() => this.gameLoop());
         }
@@ -847,4 +1198,18 @@ class GeometryDash {
 }
 
 // Инициализация
-window.addEventListener('DOMContentLoaded', () => new GeometryDash());
+function initializeGame() {
+    console.log('🚀 INITIALIZING GAME...');
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            window.game = new GeometryDash();
+        });
+    } else {
+        window.game = new GeometryDash();
+    }
+}
+
+// Запуск
+console.log('🎮 Geometry Dash Mobile Ultimate - Loading...');
+initializeGame();
